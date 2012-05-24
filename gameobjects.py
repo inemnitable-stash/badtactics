@@ -6,13 +6,13 @@ class menuCursor:
 	def __init__(self, numOptions):
 		self.image = pygame.image.load('menucursor.png').convert_alpha()
 		self.location = 0
-		self.maxloc = numOptions - 1
+		self.maxloc = numOptions
 		
 	def move(self, direc):
-		if direc == K_UP and self.location > 0:
-			self.location -= 1
-		if direc == K_DOWN and self.location < self.maxloc:
-			self.location += 1
+		if direc == K_UP:
+			self.location = (self.location - 1) % self.maxloc
+		if direc == K_DOWN:
+			self.location = (self.location + 1) % self.maxloc
 				
 
 class gameCursor:
@@ -72,6 +72,7 @@ class characterObj:
 		self.str = (40, 30, 30)[job]
 		self.defense = (20, 20, 20)[job]
 		self.actions = ("Attack", "Wait")
+		self.active = True
 	
 class terrainObj:
 	def __init__(self):
