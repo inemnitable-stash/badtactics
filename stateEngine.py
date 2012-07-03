@@ -57,7 +57,7 @@ class newGame:
         if self.display:
             size1 = self.font.size("Epic")
             size2 = self.font.size("Maneuvers")
-            gameWindow.fill((0,0,0))
+            gameWindow.fill(black)
             gameWindow.blit(self.font.render("Epic", True, white, black), (400 - size1[0]/2, 300 - size1[1]))
             gameWindow.blit(self.font.render("Maneuvers", True, white, black), (400 - size2[0]/2, 300))
         
@@ -80,11 +80,11 @@ class gameMap:
     
     def draw(self, gameWindow):
         if self.display:
-            gameWindow.fill((0,0,0))
+            gameWindow.fill(black)
             for x in xrange(0,702,100):
-                pygame.draw.line(gameWindow, (255,255,255), (x,0), (x,600))
+                pygame.draw.line(gameWindow, white, (x,0), (x,600))
             for y in xrange(0,502,100):
-                pygame.draw.line(gameWindow, (255,255,255), (0,y), (800,y))
+                pygame.draw.line(gameWindow, white, (0,y), (800,y))
             for location, occupant in self.terrain.occupant.iteritems():
                 if occupant and 0 <= location[0] - self.currdisp[0] < 8 and 0 <= location[1] - self.currdisp[1] < 6:
                     gameWindow.blit(occupant.image, tuple(100 * (loc - self.currdisp[i]) + 2 for i, loc in enumerate(location)))
@@ -102,7 +102,7 @@ class gameMap:
                     # show some character info
                     pass
         if event.key == K_x:
-            state.pushState(mapMenu(self.cursor, self.terrain.occupant), True)
+            state.pushState(mapMenu(self.cursor), True)
 
 class windowedMenu:
     def draw(self, gameWindow):
@@ -113,7 +113,7 @@ class windowedMenu:
         self.menuWindow.blit(self.menuCursor.image, (3, 4 + 18*self.menuCursor.location))
         for index, option in enumerate(self.options):
             self.menuWindow.blit(self.font.render(option, False, white, black), (20, 3 + 18*index))
-        if self.cursor.location[0] - self.cursor.origin.currdisp[0] < 5:
+        if self.cursor.location[0] - self.origin.currdisp[0] < 5:
             gameWindow.blit(self.menuWindow, (600,0))
         #print(self.menuWindow)
         else:
@@ -151,47 +151,34 @@ class moveMenu(windowedMenu):
         self.character = character
         self.initloc = initloc
         self.options = character.actions
-        cursor.origin.terrain.occupant[initloc] = None
-        cursor.origin.terrain.occupant[cursor.location] = character
+        self.origin = cursor.origin
+        self.characters = self.origin.terrain.occupant
+        self.characters[initloc] = None
+        self.characters[cursor.location] = character
         self.font = pygame.font.SysFont("sans", 15)
         self.menuWindow = pygame.Surface((200, 18 * len(self.options) + 6))
         self.menuCursor = gameobjects.menuCursor(len(self.options))
-    
-    # def draw(self, gameWindow):
-    #     if self.display:
-    #         dim = self.menuWindow.get_size()
-    #         self.menuWindow.fill((0,0,0))
-    #         for start, end in (((1,1), (dim[0]-1, 1)), ((1,1), (1, dim[1]-1)), ((dim[0]-1,1), (dim[0]-1, dim[1]-1)), ((1, dim[1]-1), (dim[0]-1,dim[1]-1))):
-    #             pygame.draw.line(self.menuWindow, (255,255,255), start, end)
-    #         self.menuWindow.blit(self.menuCursor.image, (3, 4 + 18*self.menuCursor.location))
-    #         for index, option in enumerate(self.character.actions):
-    #             self.menuWindow.blit(self.font.render(option, False, (255,255,255), (0,0,0)), (20, 3 + 18*index))
-    #         if self.cursor.location[0] - self.cursor.origin.currdisp[0] < 5:
-    #             gameWindow.blit(self.menuWindow, (600,0))
-    #         #print(self.menuWindow)
-    #         else:
-    #            gameWindow.blit(self.menuWindow, (0,0))
     
     def processInput(self, event, state):
         if event.key in (K_UP, K_DOWN):
             self.menuCursor.move(event.key)
         if event.key == K_x:
-            self.cursor.origin.terrain.occupant[self.cursor.location] = None
-            self.cursor.origin.terrain.occupant[self.initloc] = self.character
+            self.characters[self.cursor.location] = None
+            self.characters[self.initloc] = self.character
             state.popState()
         if event.key == K_z:
             if self.options[self.menuCursor.location] == "Attack":
-                state.pushState(attackMenu())
+                state.pushState(attackMenu(self.cursor, self.character), False)
             elif self.options[self.menuCursor.location] == "Wait":
                 self.character.active = False
                 state.popState()
                 state.popState()
 
 class mapMenu(windowedMenu):
-    def __init__(self, cursor, characters):
+    def __init__(self, cursor):
         self.display = True
         self.cursor = cursor
-        self.characters = characters
+        self.characters = cursor.origin.terrain.occupant
         self.origin = cursor.origin
         self.options = ("End Turn",)
         self.font = pygame.font.SysFont("sans", 15)
@@ -205,11 +192,52 @@ class mapMenu(windowedMenu):
             state.popState()
         if event.key == K_z:
             if self.options[self.menuCursor.location] == "End Turn":
-                for character in self.cursor.origin.terrain.occupant.itervalues():
+                for character in self.characters.itervalues():
                     if character and not character.active:
                         character.active = True
                 if self.origin.faction == "player":
                     self.origin.faction = "enemy"
                 elif self.origin.faction == "enemy":
                     self.origin.faction = "player"
+            state.popState()
+
+class attackMenu(windowedMenu):
+    def __init__(self, cursor, attacker):
+        self.display = True
+        self.cursor = cursor
+        self.attacker = attacker
+        self.origin = cursor.origin
+        self.characters = cursor.origin.terrain.occupant
+        self.options = []
+        self.targets = []
+        for disp in ((-1,0), (1,0), (0,-1), (0,1)):
+            loc = (self.cursor.location[0] + disp[0], self.cursor.location[1] + disp[1])
+            if self.characters[loc] and self.characters[loc].faction != self.attacker.faction:
+                self.options.append(self.characters[loc].name)
+                self.targets.append(loc)
+        self.font = pygame.font.SysFont("sans", 15)
+        self.menuWindow = pygame.Surface((200, 18 * len(self.options) + 6))
+        self.menuCursor = gameobjects.menuCursor(len(self.options))
+    
+    def processInput(self, event, state):
+        if event.key in (K_UP, K_DOWN):
+            self.menuCursor.move(event.key)
+        if event.key == K_x:
+            state.popState()
+        if event.key == K_z:
+            loc = self.targets[self.menuCursor.location]
+            target = self.characters[loc]
+            #attackAnimation(self.attacker, target)
+            target.hp -= max(self.attacker.str - target.defense, 0)
+            if target.hp <= 0:
+                #target.deathAnimation()
+                target = None
+                self.characters[loc] = None
+            if target:
+                #attackAnimation(target, self.attacker)
+                self.attacker.hp -= max(target.str - self.attacker.defense, 0)
+            if self.attacker.hp <= 0:
+                #self.attacker.deathAnimation()
+                self.characters[self.cursor.location] = None
+            state.popState()
             state.popState()

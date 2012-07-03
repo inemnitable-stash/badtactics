@@ -68,7 +68,7 @@ class characterObj:
 		self.faction = faction
 		self.jobID = job
 		self.move = (6, 4, 3)[job]
-		self.hp = (100, 60, 50)[job]
+		self.hp = (1, 6, 5)[job]
 		self.str = (40, 30, 30)[job]
 		self.defense = (20, 20, 20)[job]
 		self.actions = ("Attack", "Wait")

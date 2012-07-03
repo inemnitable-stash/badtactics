@@ -4,7 +4,7 @@ from pygame.locals import *
 pygame.init()
 fpsClock = pygame.time.Clock()
 gameWindow = pygame.display.set_mode((800, 600))
-pygame.display.set_caption("All's Fair in Love and Tactics: Summer vs. Adam")
+pygame.display.set_caption("Epic Maneuvers!")
 state = stateEngine.gameState()
 
 while True:
